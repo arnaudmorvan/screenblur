@@ -12,7 +12,7 @@ app and follow its window.
 ## Download
 
 **[→ Latest release](https://github.com/ArnaudMorvan/screenblur/releases/latest)**
-— `ScreenBlur-1.0.0.dmg`, macOS 15 Sequoia or later.
+— `ScreenBlur-1.0.1.dmg`, macOS 15 Sequoia or later.
 
 > **First launch.** The app is signed but **not notarised by Apple**, so macOS
 > will refuse to open it: *"cannot verify the developer"*. Dismiss the message,
@@ -111,7 +111,7 @@ sur l'écran, ou rattachée à une application et suivre sa fenêtre.
 ## Télécharger
 
 **[→ Dernière version](https://github.com/ArnaudMorvan/screenblur/releases/latest)**
-— `ScreenBlur-1.0.0.dmg`, macOS 15 Sequoia ou plus récent.
+— `ScreenBlur-1.0.1.dmg`, macOS 15 Sequoia ou plus récent.
 
 > **Premier lancement.** L'app est signée mais **pas notarisée par Apple** :
 > macOS refusera de l'ouvrir (« impossible de vérifier le développeur »). Fermez
