@@ -1,0 +1,12 @@
+# Sortie de compilation Swift
+.build/
+*.xcodeproj
+.swiftpm/
+
+# Bundles et archives produits par scripts/build.sh et scripts/package.sh.
+# Les binaires ne sont pas versionnés : ils vivent dans les Releases GitHub,
+# où ils portent une version, une somme de contrôle et une date.
+dist/
+
+# macOS
+.DS_Store
