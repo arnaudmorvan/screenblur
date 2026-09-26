@@ -344,22 +344,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             guard let screen = controller.busiestScreen else {
                 print("aucun écran"); NSApp.terminate(nil); return
             }
-            var report: String
+            // L'état est rapporté DANS TOUS LES CAS : quand la capture échoue — autorisation
+            // refusée, par exemple — c'est justement là qu'on a le plus besoin de savoir ce que
+            // l'application croit masquer.
+            let apps = controller.state.apps.map(\.bundleID).joined(separator: ", ")
+            let attachees = controller.state.zones.filter { $0.scope != .everywhere }.count
+            var report = """
+            écran : \(screen.localizedName)
+            zones : \(controller.state.zones.count) dont \(attachees) attachée(s) à une application
+            applications suivies : \(apps.isEmpty ? "aucune" : apps)
+            fenêtres masquées : \(controller.maskedWindowCount)
+            style : \(controller.state.style.rawValue) / \(controller.state.intensity.rawValue)
+            \(controller.trackingDescription.joined(separator: "\n"))
+            \(controller.maskPlanDescription.joined(separator: "\n"))
+            """
+            if let erreur = controller.store.error {
+                report += "\nLECTURE DU FICHIER : \(erreur)"
+            }
             do {
                 let url = try await SharePreview.capture(screen: screen, to: URL(fileURLWithPath: path))
-                let apps = controller.state.apps.map(\.bundleID).joined(separator: ", ")
-                report = """
-                aperçu écrit : \(url.path)
-                écran : \(screen.localizedName)
-                zones : \(controller.state.zones.count) dont \(controller.state.zones.filter { $0.scope != .everywhere }.count) attachée(s) à une application
-                applications suivies : \(apps.isEmpty ? "aucune" : apps)
-                fenêtres masquées : \(controller.maskedWindowCount)
-                style : \(controller.state.style.rawValue) / \(controller.state.intensity.rawValue)
-                \(controller.trackingDescription.joined(separator: "\n"))
-                \(controller.maskPlanDescription.joined(separator: "\n"))
-                """
+                report += "\naperçu écrit : \(url.path)"
             } catch {
-                report = "échec : \(error.localizedDescription)"
+                report += "\naperçu impossible : \(error.localizedDescription)"
             }
             print(report)
             // Lancé par `open`, le diagnostic n'a pas de sortie standard lisible : le compte rendu

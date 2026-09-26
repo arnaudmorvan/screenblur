@@ -249,6 +249,12 @@ final class MaskController: EditorOverlayDelegate {
     /// masques : une zone attachée peut n'avoir aucun masque simplement parce que la partie
     /// qu'elle vise est cachée derrière une autre fenêtre.
     var trackingDescription: [String] {
+        let consigne = tracker.currentTargets.sorted().joined(separator: ", ")
+        return ["CIBLES \(consigne.isEmpty ? "aucune" : consigne) MINUTEUR \(tracker.isRunning ? "actif" : "arrêté")",
+                tracker.rawScanSummary] + windowLines
+    }
+
+    private var windowLines: [String] {
         trackedWindows.map { window in
             let holes = window.holes
                 .map { "\(Int($0.minX)),\(Int($0.minY)),\(Int($0.width)),\(Int($0.height))" }

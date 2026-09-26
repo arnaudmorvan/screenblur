@@ -71,6 +71,32 @@ Trois réflexes, dans cet ordre d'importance :
   l'être**. Et ce relevé ne doit pas écarter les fenêtres recouvertes : on y
   cherche *où est* une fenêtre, pas s'il faut la masquer.
 
+## Durcissements du 2026-09-27
+
+Deux réglages qui, chacun, pouvaient faire disparaître un masque en silence.
+
+- **`canHide = false` sur les fenêtres de masque.** Par défaut une fenêtre suit le masquage de
+  son application : un « Masquer les autres » (⌘⌥H), un `NSApp.hide`, ou un outil
+  d'enregistrement qui fait le ménage avant de filmer effaçait les masques. Le contenu, lui,
+  restait affiché.
+- **Seules les fenêtres ordinaires (couche 0) comptent comme obstacles.** Le cadre d'une fenêtre
+  ne dit pas qu'elle est opaque : un calque flottant plein écran — sélecteur d'enregistrement,
+  outil d'annotation, HUD, bannière — recouvre tout sans rien cacher. Le compter perçait le
+  masque alors que le contenu restait visible dessous. Conséquence assumée : un masque peut
+  désormais recouvrir le Dock, la barre des menus ou une bannière. C'est laid et sans danger,
+  alors que l'inverse était propre et dangereux.
+
+Ajouté au passage, parce que leur absence a coûté plusieurs allers-retours :
+`scripts/diagnostic_masques.sh` (journalise l'état des masques et les grandes fenêtres pendant
+qu'on reproduit un problème) et un `--apercu` qui rapporte l'état **même quand la capture
+échoue** — c'est justement là qu'on en a besoin. Le rapport dit maintenant ce que le suivi a reçu
+comme consigne, si son minuteur tourne, et ce que donne le relevé brut du système.
+
+**Rappel de comportement, pas un bug :** une zone rattachée à une application n'existe que tant
+que cette application a une fenêtre à l'écran. Application quittée, fenêtre fermée ou réduite : le
+masque disparaît, puisqu'il n'y a plus rien à cacher. Un `Claude [com.anthropic.claudefordesktop] :
+aucune fenêtre à l'écran` dans `diagnostic_suivi.sh` explique à lui seul un masque absent.
+
 ## Ce qui reste à faire
 
 - **Interface bilingue.** Tout est en français ; les autres apps de la série ont

@@ -61,6 +61,31 @@ final class AppWindowTracker: NSObject {
     var onChange: (([TrackedWindow]) -> Void)?
 
     var tracked: [TrackedWindow] { last }
+    /// Ce que le suivi a reçu comme consigne — sans quoi « zéro fenêtre suivie » ne dit pas
+    /// si le relevé a échoué ou si on ne lui a rien demandé.
+    var currentTargets: Set<String> { targets }
+    var isRunning: Bool { timer != nil }
+
+    /// Le relevé BRUT, sans aucun filtre : combien de fenêtres le système nous montre, combien
+    /// sont ordinaires, et combien ont un identifiant de paquet résoluble. Sert à distinguer
+    /// « la logique de filtrage rejette tout » de « le système ne nous montre rien ».
+    var rawScanSummary: String {
+        let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] ?? []
+        var couche0 = 0
+        var avecPaquet = 0
+        var exemples: [String] = []
+        for info in list {
+            let layer = info[kCGWindowLayer as String] as? Int ?? -1
+            guard layer == 0 else { continue }
+            couche0 += 1
+            guard let pid = info[kCGWindowOwnerPID as String] as? pid_t else { continue }
+            if let bundle = NSRunningApplication(processIdentifier: pid)?.bundleIdentifier {
+                avecPaquet += 1
+                if exemples.count < 5 { exemples.append(bundle) }
+            }
+        }
+        return "BRUT \(list.count) fenêtres, \(couche0) ordinaires, \(avecPaquet) avec identifiant — ex. \(exemples.joined(separator: ", "))"
+    }
 
     func setTargets(_ bundleIDs: Set<String>) {
         targets = bundleIDs
@@ -185,8 +210,7 @@ final class AppWindowTracker: NSObject {
                 return resolved
             }()
 
-            // Seules les fenêtres ordinaires (couche 0) se masquent ; mais TOUTES les fenêtres
-            // rencontrées comptent comme obstacles, barre des menus et Dock compris.
+            // Seules les fenêtres ordinaires (couche 0) se masquent.
             if layer == 0, targets.contains(bundleID),
                quartz.width >= Self.minimumSide, quartz.height >= Self.minimumSide,
                includingCovered || !Geometry.isFullyCovered(frame, by: front) {
@@ -197,7 +221,16 @@ final class AppWindowTracker: NSObject {
                 found.append(TrackedWindow(id: id, bundleID: bundleID, frame: frame,
                                            holes: settling ? [] : Geometry.holes(in: frame, coveredBy: front)))
             }
-            front.append(frame)
+            // Et seules elles comptent comme OBSTACLES.
+            //
+            // Le cadre d'une fenêtre ne dit pas qu'elle est opaque : un calque flottant plein
+            // écran — sélecteur d'enregistrement, outil d'annotation, HUD, bannière de
+            // notification — recouvre tout sans rien cacher. Le compter comme obstacle percerait
+            // le masque alors que le contenu reste parfaitement visible dessous : une fuite, et
+            // silencieuse. Les couches supérieures sont donc ignorées. Conséquence assumée : un
+            // masque peut recouvrir le Dock, la barre des menus ou une bannière. C'est laid et
+            // sans danger, alors que l'inverse est propre et dangereux.
+            if layer == 0 { front.append(frame) }
         }
         return found
     }

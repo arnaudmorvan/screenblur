@@ -174,6 +174,10 @@ final class MaskWindow: NSPanel {
         isFloatingPanel = true
         isReleasedWhenClosed = false
         hidesOnDeactivate = false
+        // Un masque ne doit JAMAIS suivre un masquage d'application — ni « Masquer les autres »
+        // (⌘⌥H), ni un NSApp.hide, ni un outil d'enregistrement qui fait le ménage avant de
+        // filmer. Sans cela il s'efface en silence et découvre ce qu'il cachait.
+        canHide = false
         animationBehavior = .none
         // Au-dessus de tout, y compris des applications en plein écran : un masque qui passe
         // derrière une fenêtre ne masque plus rien.
