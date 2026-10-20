@@ -23,7 +23,7 @@ extension NSScreen {
 
 enum Alerts {
     @MainActor
-    static func inform(_ message: String, detail: String, button: String = "D'accord") {
+    static func inform(_ message: String, detail: String, button: String = l("D'accord", "OK")) {
         let alert = NSAlert()
         alert.messageText = message
         alert.informativeText = detail
@@ -37,10 +37,10 @@ enum Alerts {
     @MainActor
     static func askScreenRecording(detail: String) {
         let alert = NSAlert()
-        alert.messageText = "ScreenBlur a besoin de l'autorisation d'enregistrement de l'écran"
+        alert.messageText = l("ScreenBlur a besoin de l'autorisation d'enregistrement de l'écran", "ScreenBlur needs Screen Recording permission")
         alert.informativeText = detail
-        alert.addButton(withTitle: "Ouvrir les réglages")
-        alert.addButton(withTitle: "Utiliser le verre dépoli")
+        alert.addButton(withTitle: l("Ouvrir les réglages", "Open Settings"))
+        alert.addButton(withTitle: l("Utiliser le verre dépoli", "Use frosted glass"))
         alert.alertStyle = .warning
         if alert.runModal() == .alertFirstButtonReturn,
            let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") {

@@ -20,7 +20,7 @@ final class ScreenBlurStore {
                 state = decoded
             } else {
                 state = ScreenBlurState()
-                error = "Le fichier zones.json est illisible ; il n'est pas écrasé."
+                error = l("Le fichier zones.json est illisible ; il n'est pas écrasé.", "zones.json is unreadable; it is not overwritten.")
             }
         } else {
             state = ScreenBlurState()
@@ -59,7 +59,7 @@ final class ScreenBlurStore {
             try data.write(to: fileURL, options: .atomic)
             return true
         } catch {
-            self.error = "Enregistrement impossible : \(error.localizedDescription)"
+            self.error = l("Enregistrement impossible : \(error.localizedDescription)", "Could not save: \(error.localizedDescription)")
             return false
         }
     }

@@ -21,8 +21,8 @@ app and follow its window.
 > Apple removed it in Sequoia. Notarisation needs a paid Apple Developer
 > account; see [docs/DISTRIBUTION.md](docs/DISTRIBUTION.md).
 
-> **The interface is in French.** The code is not localised yet. Everything in
-> this README maps to what you will see on screen.
+> **English and French.** The interface follows your macOS languages (French if
+> French is among them, English otherwise); force it from the menu → **Language**.
 
 ## What it does
 

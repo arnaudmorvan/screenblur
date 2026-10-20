@@ -101,7 +101,7 @@ final class CaptureBlurEngine: NSObject, SCStreamOutput, SCStreamDelegate, @unch
                 // qu'au prochain lancement, autant le dire plutôt que de réessayer en boucle.
                 CGRequestScreenCaptureAccess()
                 await MainActor.run {
-                    self.failed?("La relecture de l'écran a échoué : \(error.localizedDescription)")
+                    self.failed?(l("La relecture de l'écran a échoué : \(error.localizedDescription)", "Reading the screen failed: \(error.localizedDescription)"))
                 }
             }
         }
@@ -155,7 +155,7 @@ final class CaptureBlurEngine: NSObject, SCStreamOutput, SCStreamDelegate, @unch
             if let id = self.streams.first(where: { $0.value === stream })?.key {
                 self.streams[id] = nil
             }
-            self.failed?("La relecture de l'écran s'est interrompue : \(error.localizedDescription)")
+            self.failed?(l("La relecture de l'écran s'est interrompue : \(error.localizedDescription)", "Reading the screen stopped: \(error.localizedDescription)"))
         }
     }
 }

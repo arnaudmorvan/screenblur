@@ -14,9 +14,9 @@ enum SharePreview {
 
         var errorDescription: String? {
             switch self {
-            case .noScreen: return "Écran introuvable."
+            case .noScreen: return l("Écran introuvable.", "Screen not found.")
             case .refused(let reason):
-                return "La relecture de l'écran a été refusée : \(reason)"
+                return l("La relecture de l'écran a été refusée : \(reason)", "Reading the screen was refused: \(reason)")
             }
         }
     }

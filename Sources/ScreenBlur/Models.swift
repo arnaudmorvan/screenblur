@@ -60,19 +60,19 @@ enum MaskStyle: String, Codable, CaseIterable {
 
     var title: String {
         switch self {
-        case .verre: return "Verre dépoli"
-        case .flou: return "Flou réglable"
-        case .mosaique: return "Mosaïque"
-        case .opaque: return "Cache opaque"
+        case .verre: return l("Verre dépoli", "Frosted glass")
+        case .flou: return l("Flou réglable", "Adjustable blur")
+        case .mosaique: return l("Mosaïque", "Pixelate")
+        case .opaque: return l("Cache opaque", "Solid cover")
         }
     }
 
     var detail: String {
         switch self {
-        case .verre: return "Le flou du système. Aucune autorisation, aucun calcul."
-        case .flou: return "ScreenBlur gaussien dont l'intensité se règle. Autorisation d'enregistrement de l'écran."
-        case .mosaique: return "Gros pixels, illisible par construction. Autorisation d'enregistrement de l'écran."
-        case .opaque: return "Un aplat. Rien ne passe, jamais."
+        case .verre: return l("Le flou du système. Aucune autorisation, aucun calcul.", "The system blur. No permission, no processing.")
+        case .flou: return l("Flou gaussien dont l'intensité se règle. Autorisation d'enregistrement de l'écran.", "Gaussian blur with adjustable strength. Requires Screen Recording permission.")
+        case .mosaique: return l("Gros pixels, illisible par construction. Autorisation d'enregistrement de l'écran.", "Large pixels, unreadable by design. Requires Screen Recording permission.")
+        case .opaque: return l("Un aplat. Rien ne passe, jamais.", "A solid fill. Nothing gets through, ever.")
         }
     }
 
@@ -87,10 +87,10 @@ enum Intensity: String, Codable, CaseIterable {
 
     var title: String {
         switch self {
-        case .douce: return "Douce"
-        case .moyenne: return "Moyenne"
-        case .forte: return "Forte"
-        case .maximale: return "Maximale"
+        case .douce: return l("Douce", "Light")
+        case .moyenne: return l("Moyenne", "Medium")
+        case .forte: return l("Forte", "Strong")
+        case .maximale: return l("Maximale", "Maximum")
         }
     }
 

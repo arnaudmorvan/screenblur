@@ -36,7 +36,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
 
         if let error = controller.store.error {
-            Alerts.inform("Les zones enregistrées n'ont pas pu être relues", detail: error)
+            Alerts.inform(l("Les zones enregistrées n'ont pas pu être relues", "Saved zones could not be read"), detail: error)
         }
         showWelcomeIfNeeded()
     }
@@ -46,12 +46,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func updateStatusIcon() {
         let active = !controller.isHidden && controller.hasSomethingToMask
         let symbol = active ? "eye.slash.fill" : "eye"
-        let image = NSImage(systemSymbolName: symbol, accessibilityDescription: active ? "Zones masquées" : "Zones levées")
+        let image = NSImage(systemSymbolName: symbol, accessibilityDescription: active ? l("Zones masquées", "Zones masked") : l("Zones levées", "Zones lifted"))
         image?.isTemplate = true
         statusItem.button?.image = image
         statusItem.button?.toolTip = active
-            ? "ScreenBlur — \(controller.activeZones.count) zone(s), \(controller.maskedWindowCount) fenêtre(s)"
-            : "ScreenBlur — rien de masqué"
+            ? "ScreenBlur — \(controller.activeZones.count) zone(s), \(controller.maskedWindowCount) " + l("fenêtre(s)", "window(s)")
+            : l("ScreenBlur — rien de masqué", "ScreenBlur — nothing masked")
     }
 
     func menuNeedsUpdate(_ menu: NSMenu) {
@@ -64,9 +64,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(header)
         menu.addItem(.separator())
 
-        add(to: menu, title: controller.isEditing ? "Terminer la modification" : "Créer / modifier les zones…",
+        add(to: menu, title: controller.isEditing ? l("Terminer la modification", "Finish editing") : l("Créer / modifier les zones…", "Create / edit zones…"),
             key: "n", action: #selector(toggleEditing))
-        let hideItem = add(to: menu, title: controller.isHidden ? "Afficher le flou" : "Masquer le flou",
+        let hideItem = add(to: menu, title: controller.isHidden ? l("Afficher le flou", "Show blur") : l("Masquer le flou", "Hide blur"),
                            key: "b", action: #selector(toggleHidden))
         hideItem.isEnabled = controller.hasSomethingToMask || !state.zones.isEmpty
 
@@ -76,38 +76,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(styleMenuItem(state: state))
         menu.addItem(intensityMenuItem(state: state))
 
-        let preview = add(to: menu, title: "Aperçu de ce que voient les autres…", key: "",
+        let preview = add(to: menu, title: l("Aperçu de ce que voient les autres…", "Preview what others see…"), key: "",
                           action: #selector(showSharePreview))
         preview.isEnabled = controller.hasSomethingToMask
-        preview.toolTip = "Capture l'écran comme le ferait un partage d'écran, masques compris."
+        preview.toolTip = l("Capture l'écran comme le ferait un partage d'écran, masques compris.", "Captures the screen the way screen sharing would, masks included.")
 
         if !state.zones.isEmpty {
             menu.addItem(.separator())
             menu.addItem(zonesMenuItem(state: state))
-            add(to: menu, title: "Supprimer toutes les zones", key: "", action: #selector(deleteAll))
+            add(to: menu, title: l("Supprimer toutes les zones", "Delete all zones"), key: "", action: #selector(deleteAll))
         }
 
         menu.addItem(.separator())
-        let launch = NSMenuItem(title: "Ouvrir à la connexion", action: #selector(toggleLaunchAtLogin), keyEquivalent: "")
+        let launch = NSMenuItem(title: l("Ouvrir à la connexion", "Open at login"), action: #selector(toggleLaunchAtLogin), keyEquivalent: "")
         launch.target = self
         launch.state = SMAppService.mainApp.status == .enabled ? .on : .off
         menu.addItem(launch)
-        add(to: menu, title: "Aide…", key: "", action: #selector(showHelp))
-        add(to: menu, title: "Quitter ScreenBlur", key: "q", action: #selector(quit))
+        menu.addItem(languageMenuItem())
+        add(to: menu, title: l("Aide…", "Help…"), key: "", action: #selector(showHelp))
+        add(to: menu, title: l("Quitter ScreenBlur", "Quit ScreenBlur"), key: "q", action: #selector(quit))
     }
 
     private func summary(active: Int, state: ScreenBlurState) -> String {
         let windows = controller.maskedWindowCount
         var parts: [String] = []
         if active > 0 { parts.append("\(active) zone\(active > 1 ? "s" : "")") }
-        if windows > 0 { parts.append("\(windows) fenêtre\(windows > 1 ? "s" : "")") }
+        if windows > 0 { parts.append("\(windows) " + l("fenêtre", "window") + (windows > 1 ? "s" : "")) }
         guard !parts.isEmpty else {
-            return state.apps.isEmpty ? "Rien de masqué" : "Rien à l'écran pour \(state.apps.count) app suivie(s)"
+            return state.apps.isEmpty ? l("Rien de masqué", "Nothing masked") : l("Rien à l'écran pour \(state.apps.count) app suivie(s)", "Nothing on screen for \(state.apps.count) tracked app(s)")
         }
         var text = parts.joined(separator: " + ") + " · " + state.style.title
         let reserve = state.zones.count - active
-        if reserve > 0 { text += " · \(reserve) en réserve" }
-        if controller.isHidden { text += " · flou levé" }
+        if reserve > 0 { text += " · \(reserve) " + l("en réserve", "on hold") }
+        if controller.isHidden { text += l(" · flou levé", " · blur lifted") }
         return text
     }
 
@@ -135,7 +136,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func intensityMenuItem(state: ScreenBlurState) -> NSMenuItem {
-        let item = NSMenuItem(title: "Intensité", action: nil, keyEquivalent: "")
+        let item = NSMenuItem(title: l("Intensité", "Intensity"), action: nil, keyEquivalent: "")
         let submenu = NSMenu()
         for intensity in Intensity.allCases {
             let entry = NSMenuItem(title: intensity.title, action: #selector(pickIntensity(_:)), keyEquivalent: "")
@@ -153,7 +154,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     /// La liste des applications ouvertes, cochables. Une application suivie mais fermée reste
     /// en bas de liste : sans cela on ne pourrait plus la décocher.
     private func appsMenuItem(state: ScreenBlurState) -> NSMenuItem {
-        let item = NSMenuItem(title: "Masquer une application entière", action: nil, keyEquivalent: "")
+        let item = NSMenuItem(title: l("Masquer une application entière", "Mask an entire app"), action: nil, keyEquivalent: "")
         let submenu = NSMenu()
         let mine = Bundle.main.bundleIdentifier
 
@@ -183,7 +184,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if !absent.isEmpty {
             submenu.addItem(.separator())
             for target in absent {
-                let entry = NSMenuItem(title: "\(target.name) (pas en cours)",
+                let entry = NSMenuItem(title: "\(target.name) " + l("(pas en cours)", "(not running)"),
                                        action: #selector(toggleApp(_:)), keyEquivalent: "")
                 entry.target = self
                 entry.representedObject = [target.bundleID, target.name]
@@ -194,7 +195,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         if !state.apps.isEmpty {
             submenu.addItem(.separator())
-            let clear = NSMenuItem(title: "Ne plus masquer aucune application",
+            let clear = NSMenuItem(title: l("Ne plus masquer aucune application", "Stop masking all apps"),
                                    action: #selector(unmaskAllApps), keyEquivalent: "")
             clear.target = self
             submenu.addItem(clear)
@@ -221,27 +222,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let size = placed.map { "\(Int($0.width)) × \(Int($0.height))" }
         switch zone.scope {
         case .everywhere:
-            let screen = NSScreen.screen(withIdentifier: zone.displayUUID)?.shortName ?? "écran absent"
+            let screen = NSScreen.screen(withIdentifier: zone.displayUUID)?.shortName ?? l("écran absent", "screen missing")
             return "Zone \(index + 1) — \(screen)" + (size.map { " · \($0)" } ?? "")
         case .app(_, let name):
             // Une zone attachée dont l'application est fermée n'est nulle part : le dire.
-            let state = placed == nil ? " · \(name) fermée" : (size.map { " · \($0)" } ?? "")
-            return "Zone \(index + 1) — sur \(name)\(state)"
+            let state = placed == nil ? l(" · \(name) fermée", " · \(name) closed") : (size.map { " · \($0)" } ?? "")
+            return "Zone \(index + 1) — " + l("sur", "on") + " \(name)\(state)"
         }
     }
 
     /// Le choix demandé : cette zone s'applique-t-elle partout, ou seulement sur une application ?
     private func zoneSubmenu(for zone: Zone) -> NSMenu {
         let submenu = NSMenu()
-        let header = NSMenuItem(title: "Appliquer cette zone à…", action: nil, keyEquivalent: "")
+        let header = NSMenuItem(title: l("Appliquer cette zone à…", "Apply this zone to…"), action: nil, keyEquivalent: "")
         header.isEnabled = false
         submenu.addItem(header)
 
-        let everywhere = NSMenuItem(title: "Tout l'écran", action: #selector(scopeZone(_:)), keyEquivalent: "")
+        let everywhere = NSMenuItem(title: l("Tout l'écran", "Whole screen"), action: #selector(scopeZone(_:)), keyEquivalent: "")
         everywhere.target = self
         everywhere.representedObject = [zone.id.uuidString, "", ""]
         everywhere.state = zone.scope == .everywhere ? .on : .off
-        everywhere.toolTip = "Un rectangle fixe, masqué en permanence."
+        everywhere.toolTip = l("Un rectangle fixe, masqué en permanence.", "A fixed rectangle, always masked.")
         submenu.addItem(everywhere)
 
         let mine = Bundle.main.bundleIdentifier
@@ -250,25 +251,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             .sorted(by: { ($0.localizedName ?? "").localizedCaseInsensitiveCompare($1.localizedName ?? "") == .orderedAscending }) {
             guard let bundleID = app.bundleIdentifier else { continue }
             let name = app.localizedName ?? bundleID
-            let entry = NSMenuItem(title: "Seulement sur \(name)", action: #selector(scopeZone(_:)), keyEquivalent: "")
+            let entry = NSMenuItem(title: l("Seulement sur \(name)", "Only on \(name)"), action: #selector(scopeZone(_:)), keyEquivalent: "")
             entry.target = self
             entry.representedObject = [zone.id.uuidString, bundleID, name]
             entry.state = zone.scope.bundleID == bundleID ? .on : .off
-            entry.toolTip = "La zone suit les fenêtres de \(name) et disparaît avec elles."
+            entry.toolTip = l("La zone suit les fenêtres de \(name) et disparaît avec elles.", "The zone follows \(name)'s windows and disappears with them.")
             submenu.addItem(entry)
         }
 
         // Une application rattachée mais fermée doit rester visible, sinon on ne peut plus rien changer.
         if let bundleID = zone.scope.bundleID,
            !NSWorkspace.shared.runningApplications.contains(where: { $0.bundleIdentifier == bundleID }) {
-            let entry = NSMenuItem(title: "Seulement sur \(zone.scope.label ?? bundleID) (pas en cours)",
+            let entry = NSMenuItem(title: l("Seulement sur \(zone.scope.label ?? bundleID) (pas en cours)", "Only on \(zone.scope.label ?? bundleID) (not running)"),
                                    action: nil, keyEquivalent: "")
             entry.state = .on
             submenu.addItem(entry)
         }
 
         submenu.addItem(.separator())
-        let delete = NSMenuItem(title: "Supprimer cette zone", action: #selector(deleteZone(_:)), keyEquivalent: "")
+        let delete = NSMenuItem(title: l("Supprimer cette zone", "Delete this zone"), action: #selector(deleteZone(_:)), keyEquivalent: "")
         delete.target = self
         delete.representedObject = zone.id.uuidString
         submenu.addItem(delete)
@@ -316,8 +317,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 try SMAppService.mainApp.register()
             }
         } catch {
-            Alerts.inform("L'ouverture à la connexion n'a pas pu être modifiée",
-                          detail: "\(error.localizedDescription)\n\nCe réglage demande que ScreenBlur soit installé dans /Applications et signé.")
+            Alerts.inform(l("L'ouverture à la connexion n'a pas pu être modifiée", "Open at login could not be changed"),
+                          detail: "\(error.localizedDescription)\n\n" + l("Ce réglage demande que ScreenBlur soit installé dans /Applications et signé.", "This setting requires ScreenBlur to be installed in /Applications and signed."))
         }
     }
 
@@ -329,9 +330,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 let url = try await SharePreview.capture(screen: screen, to: SharePreview.temporaryURL())
                 NSWorkspace.shared.open(url)
             } catch SharePreview.Failure.refused {
-                Alerts.askScreenRecording(detail: "L'aperçu relit l'écran pour vous montrer ce qui part à l'antenne. Autorisez ScreenBlur, puis relancez l'application.")
+                Alerts.askScreenRecording(detail: l("L'aperçu relit l'écran pour vous montrer ce qui part à l'antenne. Autorisez ScreenBlur, puis relancez l'application.", "The preview reads the screen to show you what goes out on air. Allow ScreenBlur, then relaunch the app."))
             } catch {
-                Alerts.inform("L'aperçu n'a pas pu être pris", detail: error.localizedDescription)
+                Alerts.inform(l("L'aperçu n'a pas pu être pris", "The preview could not be taken"), detail: error.localizedDescription)
             }
         }
     }
@@ -401,11 +402,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let key = "screenblur.welcomeShown"
         guard !UserDefaults.standard.bool(forKey: key) else { return }
         UserDefaults.standard.set(true, forKey: key)
-        Alerts.inform("ScreenBlur masque une partie de votre écran", detail: helpText, button: "Créer ma première zone")
+        Alerts.inform(l("ScreenBlur masque une partie de votre écran", "ScreenBlur masks part of your screen"), detail: helpText,
+                      button: l("Créer ma première zone", "Create my first zone"))
         controller.beginEditing()
     }
 
     private var helpText: String {
+        L10n.isFrench ? helpTextFR : helpTextEN
+    }
+
+    private var helpTextFR: String {
         """
         ⌥⇧N — créer ou modifier les zones. Glissez pour tracer un cadre, déplacez-le, \
         redimensionnez-le par ses poignées, ⌫ pour le supprimer, ⏎ pour terminer.
@@ -425,5 +431,48 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         Zones enregistrées dans ~/Library/Application Support/ScreenBlur/zones.json, en proportions \
         d'écran : un changement de résolution ne les déplace pas.
         """
+    }
+
+    private var helpTextEN: String {
+        """
+        ⌥⇧N — create or edit zones. Drag to draw a frame, move it, resize it by its handles, \
+        ⌫ to delete it, ⏎ to finish.
+        ⌥⇧B — lift or restore all masks, without losing them.
+
+        Masks stay visible during screen sharing: they are part of the image composed by macOS, \
+        exactly like any other window.
+
+        One limit to know: if you share A SINGLE WINDOW instead of the whole screen, the video call \
+        only captures that window and no mask appears in it — the content would go out on air. \
+        Share the whole screen, or check your preview first.
+
+        Styles: “Frosted glass” and “Solid cover” need no permission. “Adjustable blur” and \
+        “Pixelate” read the screen and need Screen Recording permission.
+
+        Zones are saved in ~/Library/Application Support/ScreenBlur/zones.json, as proportions of \
+        the screen: a resolution change does not move them.
+        """
+    }
+
+    // MARK: - Langue
+
+    private func languageMenuItem() -> NSMenuItem {
+        let item = NSMenuItem(title: l("Langue", "Language"), action: nil, keyEquivalent: "")
+        let submenu = NSMenu()
+        for language in L10n.Language.allCases {
+            let entry = NSMenuItem(title: language.title, action: #selector(pickLanguage(_:)), keyEquivalent: "")
+            entry.target = self
+            entry.representedObject = language.rawValue
+            entry.state = L10n.language == language ? .on : .off
+            submenu.addItem(entry)
+        }
+        item.submenu = submenu
+        return item
+    }
+
+    @objc private func pickLanguage(_ sender: NSMenuItem) {
+        guard let raw = sender.representedObject as? String, let language = L10n.Language(rawValue: raw) else { return }
+        L10n.language = language
+        updateStatusIcon()
     }
 }

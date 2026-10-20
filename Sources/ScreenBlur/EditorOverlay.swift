@@ -265,7 +265,8 @@ final class EditorView: NSView {
     }
 
     private func drawHint() {
-        let text = "Glisser pour créer une zone   ·   déplacer et redimensionner   ·   ⌫ supprimer   ·   ⏎ terminer"
+        let text = l("Glisser pour créer une zone   ·   déplacer et redimensionner   ·   ⌫ supprimer   ·   ⏎ terminer",
+                     "Drag to create a zone   ·   move and resize   ·   ⌫ delete   ·   ⏎ done")
         draw(label: text, centeredAt: CGPoint(x: bounds.midX, y: 64), fontSize: 14)
     }
 

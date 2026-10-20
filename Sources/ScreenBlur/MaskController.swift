@@ -226,7 +226,7 @@ final class MaskController: EditorOverlayDelegate {
         guard store.state.style.needsScreenRecording else { return }
         store.update { $0.style = .verre }
         refresh()
-        Alerts.askScreenRecording(detail: message + "\n\nEn attendant, les masques utilisent le verre dépoli — rien n'est découvert.")
+        Alerts.askScreenRecording(detail: message + "\n\n" + l("En attendant, les masques utilisent le verre dépoli — rien n'est découvert.", "Meanwhile, masks use frosted glass — nothing is uncovered."))
     }
 
     /// Ce qui est masqué en ce moment, cadre par cadre, trous compris. Sert au diagnostic
@@ -411,8 +411,8 @@ final class MaskController: EditorOverlayDelegate {
             // Relevé ponctuel : l'application n'est pas encore suivie, puisque c'est
             // précisément ce rattachement qui va la faire suivre.
             guard let window = tracker.snapshot(of: [bundleID]).first else {
-                Alerts.inform("\(name) n'a pas de fenêtre à l'écran",
-                              detail: "Une zone s'attache à une fenêtre : ouvrez \(name), placez sa fenêtre, puis rattachez la zone.")
+                Alerts.inform(l("\(name) n'a pas de fenêtre à l'écran", "\(name) has no window on screen"),
+                              detail: l("Une zone s'attache à une fenêtre : ouvrez \(name), placez sa fenêtre, puis rattachez la zone.", "A zone attaches to a window: open \(name), place its window, then attach the zone."))
                 return
             }
             let frame = placed ?? window.frame.insetBy(dx: window.frame.width / 4, dy: window.frame.height / 4)

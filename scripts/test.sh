@@ -4,7 +4,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 mkdir -p .build/test-cache
 swiftc -module-cache-path .build/test-cache \
-    Sources/ScreenBlur/Geometry.swift Sources/ScreenBlur/Models.swift \
+    Sources/ScreenBlur/Geometry.swift Sources/ScreenBlur/Models.swift Sources/ScreenBlur/L10n.swift \
     Sources/ScreenBlur/ScreenBlurStore.swift Sources/ScreenBlur/ZoneRenderer.swift \
     Sources/ScreenBlur/EditorOverlay.swift Sources/ScreenBlur/MaskWindow.swift \
     Tests/ScreenBlurTests/CoreTests.swift \
