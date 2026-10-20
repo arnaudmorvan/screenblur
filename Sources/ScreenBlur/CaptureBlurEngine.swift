@@ -17,7 +17,8 @@ final class CaptureBlurEngine: NSObject, SCStreamOutput, SCStreamDelegate, @unch
 
     private var streams: [CGDirectDisplayID: SCStream] = [:]
     private var zonesByDisplay: [CGDirectDisplayID: [Zone]] = [:]
-    private var style: MaskStyle = .flou
+    /// Le style de chaque masque à rendre : flou et mosaïque peuvent cohabiter.
+    private var styles: [UUID: MaskStyle] = [:]
     private var intensity: Intensity = .forte
     private var pending = 0
 
@@ -29,9 +30,9 @@ final class CaptureBlurEngine: NSObject, SCStreamOutput, SCStreamDelegate, @unch
 
     // MARK: - Réglages
 
-    func settings(style: MaskStyle, intensity: Intensity) {
+    func settings(styles: [UUID: MaskStyle], intensity: Intensity) {
         lock.lock()
-        self.style = style
+        self.styles = styles
         self.intensity = intensity
         lock.unlock()
     }
@@ -123,19 +124,20 @@ final class CaptureBlurEngine: NSObject, SCStreamOutput, SCStreamDelegate, @unch
         lock.lock()
         let displayID = streams.first(where: { $0.value === stream })?.key
         let zones = displayID.flatMap { zonesByDisplay[$0] } ?? []
-        let style = self.style
+        let styles = self.styles
         let intensity = self.intensity
         let busy = pending > 1
         lock.unlock()
 
         // Le fil principal a déjà deux images en attente : sauter celle-ci plutôt que
         // d'engorger l'interface.
-        guard !zones.isEmpty, !busy, style.needsScreenRecording else { return }
+        guard !zones.isEmpty, !busy else { return }
 
         let source = renderer.source(from: buffer)
         let size = source.extent.size
 
         for zone in zones {
+            guard let style = styles[zone.id], style.needsScreenRecording else { continue }
             let crop = Geometry.cropRect(zone.rect, imageSize: size).integral
             guard let image = renderer.render(source: source, crop: crop,
                                               style: style, intensity: intensity) else { continue }

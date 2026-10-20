@@ -62,6 +62,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let header = NSMenuItem(title: summary(active: active, state: state), action: nil, keyEquivalent: "")
         header.isEnabled = false
         menu.addItem(header)
+        if controller.hasSomethingToMask {
+            // La seule façon de faire fuiter un masque : partager une fenêtre au lieu de l'écran.
+            let warning = NSMenuItem(title: l("⚠️ Partagez l'écran entier, pas une fenêtre",
+                                              "⚠️ Share your entire screen, not a window"),
+                                     action: #selector(showHelp), keyEquivalent: "")
+            warning.target = self
+            warning.toolTip = l("En partage d'une seule fenêtre, la visio ne voit aucun masque.",
+                                "When sharing a single window, the call sees no mask at all.")
+            menu.addItem(warning)
+        }
         menu.addItem(.separator())
 
         add(to: menu, title: controller.isEditing ? l("Terminer la modification", "Finish editing") : l("Créer / modifier les zones…", "Create / edit zones…"),
@@ -220,14 +230,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func zoneTitle(index: Int, zone: Zone) -> String {
         let placed = controller.placedFrame(of: zone.id)
         let size = placed.map { "\(Int($0.width)) × \(Int($0.height))" }
+        let title = zone.name ?? "Zone \(index + 1)"
         switch zone.scope {
         case .everywhere:
             let screen = NSScreen.screen(withIdentifier: zone.displayUUID)?.shortName ?? l("écran absent", "screen missing")
-            return "Zone \(index + 1) — \(screen)" + (size.map { " · \($0)" } ?? "")
+            return title + " — \(screen)" + (size.map { " · \($0)" } ?? "")
         case .app(_, let name):
             // Une zone attachée dont l'application est fermée n'est nulle part : le dire.
             let state = placed == nil ? l(" · \(name) fermée", " · \(name) closed") : (size.map { " · \($0)" } ?? "")
-            return "Zone \(index + 1) — " + l("sur", "on") + " \(name)\(state)"
+            return title + " — " + l("sur", "on") + " \(name)\(state)"
         }
     }
 
@@ -269,6 +280,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
 
         submenu.addItem(.separator())
+        submenu.addItem(zoneStyleMenuItem(for: zone))
+        let rename = NSMenuItem(title: l("Renommer…", "Rename…"), action: #selector(renameZone(_:)), keyEquivalent: "")
+        rename.target = self
+        rename.representedObject = zone.id.uuidString
+        submenu.addItem(rename)
         let delete = NSMenuItem(title: l("Supprimer cette zone", "Delete this zone"), action: #selector(deleteZone(_:)), keyEquivalent: "")
         delete.target = self
         delete.representedObject = zone.id.uuidString
@@ -302,6 +318,53 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         guard let parts = sender.representedObject as? [String], parts.count == 3,
               let id = UUID(uuidString: parts[0]) else { return }
         controller.setScope(zone: id, to: parts[1].isEmpty ? .everywhere : .app(bundleID: parts[1], name: parts[2]))
+    }
+
+    private func zoneStyleMenuItem(for zone: Zone) -> NSMenuItem {
+        let item = NSMenuItem(title: "Style", action: nil, keyEquivalent: "")
+        let submenu = NSMenu()
+        let general = NSMenuItem(title: l("Comme les autres (\(controller.state.style.title))",
+                                          "Same as others (\(controller.state.style.title))"),
+                                 action: #selector(pickZoneStyle(_:)), keyEquivalent: "")
+        general.target = self
+        general.representedObject = [zone.id.uuidString, ""]
+        general.state = zone.style == nil ? .on : .off
+        submenu.addItem(general)
+        submenu.addItem(.separator())
+        for style in MaskStyle.allCases {
+            let entry = NSMenuItem(title: style.title, action: #selector(pickZoneStyle(_:)), keyEquivalent: "")
+            entry.target = self
+            entry.representedObject = [zone.id.uuidString, style.rawValue]
+            entry.state = zone.style == style ? .on : .off
+            entry.toolTip = style.detail
+            submenu.addItem(entry)
+        }
+        item.submenu = submenu
+        return item
+    }
+
+    @objc private func pickZoneStyle(_ sender: NSMenuItem) {
+        guard let pair = sender.representedObject as? [String], pair.count == 2,
+              let id = UUID(uuidString: pair[0]) else { return }
+        controller.set(style: MaskStyle(rawValue: pair[1]), zone: id)
+    }
+
+    @objc private func renameZone(_ sender: NSMenuItem) {
+        guard let raw = sender.representedObject as? String, let id = UUID(uuidString: raw),
+              let zone = controller.state.zones.first(where: { $0.id == id }) else { return }
+        let alert = NSAlert()
+        alert.messageText = l("Nom de la zone", "Zone name")
+        alert.informativeText = l("Laissez vide pour revenir au numéro.", "Leave empty to go back to the number.")
+        let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 260, height: 24))
+        field.stringValue = zone.name ?? ""
+        field.placeholderString = l("Messages privés", "Private messages")
+        alert.accessoryView = field
+        alert.addButton(withTitle: l("Renommer", "Rename"))
+        alert.addButton(withTitle: l("Annuler", "Cancel"))
+        alert.window.initialFirstResponder = field
+        NSApp.activate(ignoringOtherApps: true)
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        controller.rename(zone: id, to: field.stringValue)
     }
 
     @objc private func deleteZone(_ sender: NSMenuItem) {

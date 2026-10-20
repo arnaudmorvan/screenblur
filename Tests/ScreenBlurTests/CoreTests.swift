@@ -207,6 +207,17 @@ struct CoreTests {
         precondition(portees.targetedWholeApps == ["com.apple.finder"],
                      "Seul Finder est masqué en entier ; Aperçu ne porte qu'une zone")
 
+        // Nom et style propres à une zone : enregistrés, relus, et absents d'un ancien fichier.
+        var nommee = Zone(displayUUID: "ECRAN-1", rect: relatif)
+        nommee.name = "Messages privés"
+        nommee.style = .opaque
+        let relue = try JSONDecoder().decode(Zone.self, from: JSONEncoder().encode(nommee))
+        precondition(relue.name == "Messages privés" && relue.style == .opaque, "Nom et style survivent à l'enregistrement")
+        precondition(relue.editorLabel == "Messages privés", "Le nom s'écrit sur le cadre en édition")
+        let ancienne = try JSONDecoder().decode(Zone.self, from: Data(
+            #"{"id":"\#(UUID().uuidString)","displayUUID":"E","rect":{"x":0,"y":0,"width":0.5,"height":0.5}}"#.utf8))
+        precondition(ancienne.name == nil && ancienne.style == nil, "Une zone d'avant la 1.2 reprend le style général")
+
         // Applications suivies : mémorisées par identifiant de paquet.
         precondition(store.update { $0.apps = [AppTarget(bundleID: "com.tinyspeck.slackmacgap", name: "Slack")] })
         precondition(ScreenBlurStore(root: root).state.targetedBundleIDs == ["com.tinyspeck.slackmacgap"])

@@ -31,6 +31,10 @@ struct Zone: Codable, Equatable, Identifiable {
     var displayUUID: String
     var rect: NormalizedRect
     var scope: ZoneScope = .everywhere
+    /// Un nom donné par l'utilisateur, pour s'y retrouver dans le menu et en édition.
+    var name: String?
+    /// Un style propre à la zone ; `nil` = le style général.
+    var style: MaskStyle?
 
     init(id: UUID = UUID(), displayUUID: String, rect: NormalizedRect, scope: ZoneScope = .everywhere) {
         self.id = id
@@ -47,6 +51,14 @@ struct Zone: Codable, Equatable, Identifiable {
         displayUUID = try container.decode(String.self, forKey: .displayUUID)
         rect = try container.decode(NormalizedRect.self, forKey: .rect)
         scope = try container.decodeIfPresent(ZoneScope.self, forKey: .scope) ?? .everywhere
+        name = try container.decodeIfPresent(String.self, forKey: .name)
+        style = try container.decodeIfPresent(MaskStyle.self, forKey: .style)
+    }
+
+    /// Ce que l'éditeur écrit sur le cadre : le nom, puis l'application suivie.
+    var editorLabel: String? {
+        let parts = [name, scope.label].compactMap { $0 }
+        return parts.isEmpty ? nil : parts.joined(separator: " — ")
     }
 }
 

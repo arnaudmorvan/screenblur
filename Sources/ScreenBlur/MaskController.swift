@@ -16,6 +16,8 @@ final class MaskController: EditorOverlayDelegate {
         let origin: String
         /// La zone dont il découle, s'il y en a une : c'est par là que l'éditeur le retrouve.
         let source: UUID?
+        /// Le style de la zone s'il en a un, le style général sinon.
+        let style: MaskStyle
     }
 
     let store: ScreenBlurStore
@@ -107,7 +109,8 @@ final class MaskController: EditorOverlayDelegate {
                                            screen: screen,
                                            holes: [],
                                            origin: "zone",
-                                           source: zone.id))
+                                           source: zone.id,
+                                           style: zone.style ?? store.state.style))
 
             case .app(let bundleID, let name):
                 // Le cadre de la zone est exprimé DANS la fenêtre : il la suit, et se répète
@@ -124,7 +127,8 @@ final class MaskController: EditorOverlayDelegate {
                     planned.append(PlannedMask(id: id, frame: frame, screen: screen,
                                                holes: Geometry.holes(in: frame, coveredBy: window.holes),
                                                origin: "zone sur \(name)",
-                                               source: zone.id))
+                                               source: zone.id,
+                                               style: zone.style ?? store.state.style))
                 }
             }
         }
@@ -139,7 +143,8 @@ final class MaskController: EditorOverlayDelegate {
                 return created
             }()
             planned.append(PlannedMask(id: id, frame: window.frame, screen: screen,
-                                       holes: window.holes, origin: window.bundleID, source: nil))
+                                       holes: window.holes, origin: window.bundleID, source: nil,
+                                       style: store.state.style))
         }
 
         let live = Set(trackedWindows.map(\.id))
@@ -171,6 +176,7 @@ final class MaskController: EditorOverlayDelegate {
         let planned = plan(screens: screens)
         var alive = Set<UUID>()
         var renderTargets: [Zone] = []
+        var renderStyles: [UUID: MaskStyle] = [:]
 
         for mask in planned {
             alive.insert(mask.id)
@@ -180,7 +186,8 @@ final class MaskController: EditorOverlayDelegate {
                 return created
             }()
             window.place(at: mask.frame)
-            window.apply(style: state.style, intensity: state.intensity)
+            window.apply(style: mask.style, intensity: state.intensity)
+            if !mask.style.needsScreenRecording { window.clearImage() }
             // Les parties visibles se calculent une fois, ici, dans le repère de la fenêtre :
             // la vue les peint telles quelles, et leur absence met le masque en sommeil.
             let local = CGRect(origin: .zero, size: mask.frame.size)
@@ -196,7 +203,8 @@ final class MaskController: EditorOverlayDelegate {
             if let source = mask.source, lastPlacement[source] == nil || mask.origin == "zone" {
                 lastPlacement[source] = mask.frame
             }
-            if let uuid = mask.screen.stableIdentifier {
+            if mask.style.needsScreenRecording, let uuid = mask.screen.stableIdentifier {
+                renderStyles[mask.id] = mask.style
                 renderTargets.append(Zone(id: mask.id, displayUUID: uuid,
                                           rect: Geometry.clamp(Geometry.normalize(mask.frame, in: mask.screen.frame))))
             }
@@ -207,24 +215,31 @@ final class MaskController: EditorOverlayDelegate {
             windows[id] = nil
         }
 
-        updateEngine(targets: renderTargets, screens: screens.mapValues { $0.displayID ?? 0 })
+        updateEngine(targets: renderTargets, styles: renderStyles, screens: screens.mapValues { $0.displayID ?? 0 })
         onChange?()
     }
 
-    private func updateEngine(targets: [Zone], screens: [String: CGDirectDisplayID]) {
+    private func updateEngine(targets: [Zone], styles: [UUID: MaskStyle], screens: [String: CGDirectDisplayID]) {
         let state = store.state
-        guard state.style.needsScreenRecording, !isHidden, !targets.isEmpty else {
+        guard !isHidden, !targets.isEmpty else {
             engine.stop()
             for window in windows.values { window.clearImage() }
             return
         }
-        engine.settings(style: state.style, intensity: state.intensity)
+        engine.settings(styles: styles, intensity: state.intensity)
         engine.update(zones: targets, screens: screens)
     }
 
     private func fallBackToGlass(because message: String) {
-        guard store.state.style.needsScreenRecording else { return }
-        store.update { $0.style = .verre }
+        let state = store.state
+        guard state.style.needsScreenRecording || state.zones.contains(where: { $0.style?.needsScreenRecording == true })
+        else { return }
+        store.update { state in
+            if state.style.needsScreenRecording { state.style = .verre }
+            for index in state.zones.indices where state.zones[index].style?.needsScreenRecording == true {
+                state.zones[index].style = .verre
+            }
+        }
         refresh()
         Alerts.askScreenRecording(detail: message + "\n\n" + l("En attendant, les masques utilisent le verre dépoli — rien n'est découvert.", "Meanwhile, masks use frosted glass — nothing is uncovered."))
     }
@@ -287,6 +302,25 @@ final class MaskController: EditorOverlayDelegate {
 
     func delete(zone id: UUID) {
         store.update { $0.zones.removeAll { $0.id == id } }
+        refresh()
+        pushToEditors()
+    }
+
+    /// `nil` rend la zone au style général.
+    func set(style: MaskStyle?, zone id: UUID) {
+        store.update { state in
+            guard let index = state.zones.firstIndex(where: { $0.id == id }) else { return }
+            state.zones[index].style = style
+        }
+        refresh()
+    }
+
+    func rename(zone id: UUID, to name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        store.update { state in
+            guard let index = state.zones.firstIndex(where: { $0.id == id }) else { return }
+            state.zones[index].name = trimmed.isEmpty ? nil : trimmed
+        }
         refresh()
         pushToEditors()
     }
@@ -375,7 +409,7 @@ final class MaskController: EditorOverlayDelegate {
             // Une zone attachée à une application à plusieurs fenêtres pose plusieurs masques,
             // mais reste UNE zone : l'éditeur n'en montre qu'une, sinon on déplacerait un double.
             shown.insert(source)
-            byScreen[uuid, default: []].append(EditorZone(id: zone.id, frame: mask.frame, label: zone.scope.label))
+            byScreen[uuid, default: []].append(EditorZone(id: zone.id, frame: mask.frame, label: zone.editorLabel))
         }
         for editor in editors {
             editor.view.update(zones: byScreen[editor.view.displayUUID] ?? [])
